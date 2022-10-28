@@ -1,0 +1,17 @@
+micronaut:
+  application:
+    name: ext-queue-service
+  server:
+    port: 8100
+netty:
+  default:
+    allocator:
+      max-order: 3
+kafka:
+  bootstrap:
+    servers: "${KAFKA_HOST:localhost}:${KAFKA_PORT:29093}"
+consul:
+  client:
+    registration:
+      enabled: true
+    defaultZone: "${CONSUL_HOST:localhost}:${CONSUL_PORT:8500}"

@@ -1,0 +1,9 @@
+micronaut:
+  application:
+    name: books
+
+#tag::kafka[]
+kafka:
+  bootstrap:
+    servers: localhost:9093
+#end::kafka[]

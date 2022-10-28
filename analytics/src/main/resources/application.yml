@@ -1,0 +1,9 @@
+micronaut:
+  application:
+    name: analytics
+
+#tag::kafka[]
+kafka:
+  bootstrap:
+    servers: localhost:9093
+#end::kafka[]

@@ -1,0 +1,31 @@
+micronaut:
+  application:
+    name: ext-db-service
+  server:
+    port: 8102
+datasources:
+  default:
+    url: ${JDBC_URL:`jdbc:postgresql://localhost:5433/postgres`}
+    driverClassName: org.postgresql.Driver
+    username: postgres
+    password: 123321
+    dialect: POSTGRES
+jpa:
+  default:
+    properties:
+      hibernate:
+        enable_lazy_load_no_trans: true
+        bytecode:
+          provider: none
+        hbm2ddl:
+          auto: update
+        show_sql: false
+netty:
+  default:
+    allocator:
+      max-order: 3
+consul:
+  client:
+    registration:
+      enabled: true
+    defaultZone: "${CONSUL_HOST:localhost}:${CONSUL_PORT:8500}"

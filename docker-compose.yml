@@ -1,0 +1,185 @@
+version: '3.9'
+services:
+  zookeeper-int:
+    image: confluentinc/cp-zookeeper:7.1.1
+    container_name: zookeeper-int
+    ports:
+      - 2181:2181 
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes: 
+      - ./zookeeper-int/data:/var/lib/zookeeper/data
+      - ./zookeeper-int/log:/var/lib/zookeeper/log
+  kafka-int:
+    image: confluentinc/cp-kafka:7.1.1
+    container_name: kafka-int
+    depends_on:
+      - zookeeper-int
+    ports:
+      - 29092:29092 
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-int:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-int:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes: 
+      - ./kafka-int/data:/var/lib/kafka/data 
+  zookeeper-ext:
+    image: confluentinc/cp-zookeeper:7.1.1
+    container_name: zookeeper-ext
+    ports:
+      - 2182:2182
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2182
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes: 
+      - ./zookeeper-ext/data:/var/lib/zookeeper/data
+      - ./zookeeper-ext/log:/var/lib/zookeeper/log
+  kafka-ext:
+    image: confluentinc/cp-kafka:7.1.1
+    container_name: kafka-ext
+    depends_on:
+      - zookeeper-ext
+    ports:
+      - 29093:29093
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-ext:2182
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-ext:9093,PLAINTEXT_HOST://localhost:29093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes: 
+      - ./kafka-ext/data:/var/lib/kafka/data 
+  postgres-ext:
+    image: postgres:latest
+    container_name: postgres-ext
+    environment:
+      POSTGRES_PASSWORD: 123321
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-ext:/var/lib/postgresql/data
+  postgres-int:
+    image: postgres:latest
+    container_name: postgres-int
+    environment:
+      POSTGRES_PASSWORD: 123321
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-int:/var/lib/postgresql/data
+  kafdrop-ext:
+    image: obsidiandynamics/kafdrop
+    container_name: kafdrop-ext
+    restart: "no"
+    ports:
+      - "9003:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka-ext:9093"
+      JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
+    depends_on:
+      - "kafka-ext"
+  kafdrop-int:
+    image: obsidiandynamics/kafdrop
+    container_name: kafdrop-int
+    restart: "no"
+    ports:
+      - "9002:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka-int:9092"
+      JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
+    depends_on:
+      - "kafka-int"
+  ext-queue-service:
+    container_name: ext-queue-service
+    build:
+      context: ext-queue-service
+      dockerfile: Dockerfile
+    environment:
+      CONSUL_HOST: "consul"
+      KAFKA_HOST: "kafka-ext"
+      KAFKA_PORT: 9093
+    depends_on:
+      - kafka-ext
+    ports:
+      - "8100:8100"
+  ext-ftp-service:
+    container_name: ext-ftp-service
+    build:
+      context: ext-ftp-service
+      dockerfile: Dockerfile
+    environment:
+      CONSUL_HOST: "consul"
+    ports:
+      - "8101:8101"
+  ext-db-service:
+    container_name: ext-db-service
+    build:
+      context: ext-db-service
+      dockerfile: Dockerfile
+    environment:
+      CONSUL_HOST: "consul"
+      JDBC_URL: "jdbc:postgresql://postgres-ext:5432/postgres"
+    depends_on:
+      - postgres-ext
+    ports:
+      - "8102:8102"
+  start-service:
+    container_name: start-service
+    build:
+      context: start-service
+      dockerfile: Dockerfile
+    environment:
+      CONSUL_HOST: "consul"
+      JDBC_URL: "jdbc:postgresql://postgres-ext:5432/postgres"
+      KAFKA_HOST: "kafka-ext"
+      KAFKA_PORT: 9093
+    depends_on:
+      - postgres-ext
+      - kafka-ext
+      - ext-db-service
+      - ext-queue-service
+      - ext-ftp-service
+    ports:
+      - "8103:8103"
+  middle-service:
+    container_name: middle-service
+    build:
+      context: middle-service
+      dockerfile: Dockerfile
+    environment:
+      CONSUL_HOST: "consul"
+      JDBC_URL: "jdbc:postgresql://postgres-int:5432/postgres"
+    depends_on:
+      - postgres-int
+    ports:
+      - "8104:8104"
+  end-service:
+    container_name: end-service
+    build:
+      context: end-service
+      dockerfile: Dockerfile
+    environment:
+      CONSUL_HOST: "consul"
+      KAFKA_HOST: "kafka-int"
+      KAFKA_PORT: 9092
+      JDBC_URL: "jdbc:postgresql://postgres-int:5432/postgres"
+    depends_on:
+      - middle-service
+      - postgres-int
+    ports:
+      - "8105:8105"
+  consul:
+    image: consul
+    container_name: consul
+    ports:
+      - "8500:8500"
+volumes:
+  postgres-int:
+  postgres-ext:

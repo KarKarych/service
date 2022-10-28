@@ -1,0 +1,14 @@
+micronaut:
+  application:
+    name: ext-ftp-service
+  server:
+    port: 8101
+netty:
+  default:
+    allocator:
+      max-order: 3
+consul:
+  client:
+    registration:
+      enabled: true
+    defaultZone: "${CONSUL_HOST:localhost}:${CONSUL_PORT:8500}"

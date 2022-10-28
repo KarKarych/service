@@ -1,0 +1,6 @@
+applicationType: default
+defaultPackage: example.micronaut
+testFramework: junit
+sourceLanguage: java
+buildTool: gradle
+features: [annotation-api, app-name, awaitility, graalvm, gradle, http-client, jackson-databind, java, java-application, junit, kafka, logback, micronaut-build, netty-server, reactor, reactor-http-client, readme, shade, testcontainers, testcontainers-kafka, yaml]
